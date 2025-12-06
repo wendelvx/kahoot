@@ -1,0 +1,89 @@
+# Stage 1: Build stage
+FROM php:8.2-fpm-alpine AS builder
+
+# Install system dependencies
+RUN apk add --no-cache \
+    git \
+    curl \
+    libpng-dev \
+    oniguruma-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    mysql-client
+
+# Install PHP extensions
+RUN docker-php-ext-install \
+    pdo \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath
+
+# Install composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+
+# Copy composer files
+COPY backend-api/composer.json ./
+COPY backend-api/composer.lock* ./
+
+# Install dependencies
+RUN composer install --no-dev --no-interaction --prefer-dist
+
+# Copy application
+COPY backend-api/ ./
+
+# Generate application key
+RUN php artisan key:generate
+
+# Stage 2: Production stage
+FROM php:8.2-fpm-alpine
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    libpng \
+    oniguruma \
+    libxml2 \
+    mysql-client \
+    supervisor \
+    nginx
+
+# Install PHP extensions
+RUN docker-php-ext-install \
+    pdo \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath
+
+# Copy from builder
+COPY --from=builder /app /app
+
+# Create necessary directories
+RUN mkdir -p /app/storage/logs \
+    && mkdir -p /app/storage/framework/cache \
+    && mkdir -p /app/storage/framework/sessions \
+    && mkdir -p /app/storage/framework/views
+
+# Set permissions
+RUN chown -R www-data:www-data /app \
+    && chmod -R 755 /app/storage \
+    && chmod -R 755 /app/bootstrap/cache
+
+WORKDIR /app
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copy supervisor configuration
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Expose port
+EXPOSE 9000 80
+
+# Start supervisor
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
