@@ -1,4 +1,4 @@
-Caehoot – A Cópia Militarizada do Kahoot
+🪖Caehoot – A Cópia Militarizada do Kahoot
 
 O Caehoot é uma plataforma moderna de quiz interativa construída com Vue.js 3 no frontend e Laravel 12 no backend — porém com um toque especial:
 foi criada como uma brincadeira para o meu professor chamado Caetano, transformando o clássico Kahoot em sua versão forças especiais.
